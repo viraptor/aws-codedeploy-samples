@@ -183,7 +183,8 @@ resume_processes() {
   local -a to_resume
 
   for p in ${processes[@]}; do
-    if ! local tmp_flag_value=$(get_flag "$p"); then
+    local tmp_flag_file
+    if ! tmp_flag_value=$(get_flag "$p"); then
         error_exit "$FLAGFILE doesn't exist or is unreadable"
     elif [ ! "$tmp_flag_value" = "true" ] ; then
       to_resume=("${to_resume[@]}" "$p")
@@ -232,7 +233,8 @@ autoscaling_group_name() {
     local instance_id=$1
 
     # This operates under the assumption that instances are only ever part of a single ASG.
-    local autoscaling_name=$($AWS_CLI autoscaling describe-auto-scaling-instances \
+    local autoscaling_name
+    autoscaling_name=$($AWS_CLI autoscaling describe-auto-scaling-instances \
         --instance-ids $instance_id \
         --output text \
         --query AutoScalingInstances[0].AutoScalingGroupName | tr -d '\n\r')
@@ -259,7 +261,8 @@ autoscaling_enter_standby() {
     local asg_name=${2}
 
     msg "Checking if this instance has already been moved in the Standby state"
-    local instance_state=$(get_instance_state_asg $instance_id)
+    local instance_state
+    instance_state=$(get_instance_state_asg $instance_id)
     if [ $? != 0 ]; then
         msg "Unable to get this instance's lifecycle state."
         return 1
@@ -345,7 +348,8 @@ autoscaling_exit_standby() {
     local asg_name=${2} 
 
     msg "Checking if this instance has already been moved out of Standby state"
-    local instance_state=$(get_instance_state_asg $instance_id)
+    local instance_state
+    instance_state=$(get_instance_state_asg $instance_id)
     if [ $? != 0 ]; then
         msg "Unable to get this instance's lifecycle state."
         return 1
@@ -379,7 +383,8 @@ autoscaling_exit_standby() {
         return 1
     fi
 
-    if ! local tmp_flag_value=$(get_flag "asgmindecremented"); then
+    local tmp_flag_value
+    if ! tmp_flag_value=$(get_flag "asgmindecremented"); then
         error_exit "$FLAGFILE doesn't exist or is unreadable"
     elif [ "$tmp_flag_value" = "true" ]; then
         local min_desired=$($AWS_CLI autoscaling describe-auto-scaling-groups \
@@ -423,7 +428,8 @@ autoscaling_exit_standby() {
 get_instance_state_asg() {
     local instance_id=$1
 
-    local state=$($AWS_CLI autoscaling describe-auto-scaling-instances \
+    local state
+    state=$($AWS_CLI autoscaling describe-auto-scaling-instances \
         --instance-ids $instance_id \
         --query \"AutoScalingInstances[?InstanceId == \'$instance_id\'].LifecycleState \| [0]\" \
         --output text)
@@ -543,7 +549,8 @@ get_instance_health_elb() {
     # If describe-instance-health for this instance returns an error, then it's not part of
     # this ELB. But, if the call was successful let's still double check that the status is
     # valid.
-    local instance_status=$($AWS_CLI elb describe-instance-health \
+    local instance_status
+    instance_status=$($AWS_CLI elb describe-instance-health \
         --load-balancer-name $elb_name \
         --instances $instance_id \
         --query \'InstanceStates[].State\' \
@@ -573,7 +580,8 @@ validate_elb() {
     local elb_name=$2
 
     # Get the list of active instances for this LB.
-    local elb_instances=$($AWS_CLI elb describe-load-balancers \
+    local elb_instances
+    elb_instances=$($AWS_CLI elb describe-load-balancers \
         --load-balancer-name $elb_name \
         --query \'LoadBalancerDescriptions[*].Instances[*].InstanceId\' \
         --output text)
@@ -583,7 +591,8 @@ validate_elb() {
     fi
 
     msg "Checking health of '$instance_id' as known by ELB '$elb_name'"
-    local instance_health=$(get_instance_health_elb $instance_id $elb_name)
+    local instance_health
+    instance_health=$(get_instance_health_elb $instance_id $elb_name)
     if [ $? != 0 ]; then
         return 1
     fi
